@@ -7,9 +7,10 @@ kill_timeout = 5
 processes = []
 
 [build]
-  builder = "paketobuildpacks/builder:base"
+  dockerfile = "Dockerfile"
 
 [env]
+  DUMPLING_DB_PATH = "/db/dumpling.db"
   PORT = "8080"
 
 [experimental]
@@ -42,3 +43,7 @@ processes = []
     interval = "15s"
     restart_limit = 0
     timeout = "2s"
+
+[[mounts]]
+    source = "db"
+    destination = "/db"

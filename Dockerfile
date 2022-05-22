@@ -1,7 +1,10 @@
 FROM python:alpine
-RUN pip3 install flask gunicorn
-COPY dumpling.py /app
-COPY dumpling.db /app
+
+COPY ./requirements.txt /app/requirements.txt
+RUN pip3 install -r /app/requirements.txt
+
+COPY dumpling.py /app/
+
 WORKDIR app
 ENTRYPOINT ["gunicorn"]
 CMD ["dumpling:app"]

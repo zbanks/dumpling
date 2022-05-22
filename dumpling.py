@@ -2,13 +2,14 @@
 
 import csv
 import sqlite3
+import os
 from pathlib import Path
 from collections import defaultdict
 from typing import DefaultDict, IO, Iterator, List, Tuple
 
 from flask import Flask, g, request
 
-DATABASE_PATH = Path("dumpling.db")
+DUMPLING_DB_PATH = Path(os.environ.get("DUMPLING_DB_PATH", "dumpling.db"))
 CROSSWORDQA_PATH = Path("../CrosswordQA/")
 
 DB_SCHEMA = """
@@ -63,7 +64,7 @@ def build_database() -> None:
 
 
 def get_db(in_context: bool = True):
-    connect = lambda: sqlite3.connect(DATABASE_PATH)
+    connect = lambda: sqlite3.connect(DUMPLING_DB_PATH)
     if not in_context:
         return connect()
 
