@@ -1,10 +1,9 @@
-FROM python:alpine
-
-COPY ./requirements.txt /app/requirements.txt
-RUN pip3 install -r /app/requirements.txt
-
-COPY dumpling.py /app/
+FROM python:3.9-slim-bullseye
+RUN pip install poetry==1.1.12
 
 WORKDIR app
-ENTRYPOINT ["gunicorn"]
-CMD ["dumpling:app"]
+COPY poetry.lock pyproject.toml /app/
+RUN poetry install --no-dev --no-root
+
+COPY dumpling.py /app/
+ENTRYPOINT ["poetry", "run", "gunicorn", "dumpling:app"]

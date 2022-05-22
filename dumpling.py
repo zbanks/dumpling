@@ -1,11 +1,11 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3.9
 
 import csv
-import sqlite3
 import os
-from pathlib import Path
+import sqlite3
 from collections import defaultdict
-from typing import DefaultDict, IO, Iterator, List, Tuple
+from pathlib import Path
+from typing import IO, DefaultDict, Iterator, List, Optional, Tuple
 
 from flask import Flask, g, request
 
@@ -13,12 +13,12 @@ DUMPLING_DB_PATH = Path(os.environ.get("DUMPLING_DB_PATH", "dumpling.db"))
 CROSSWORDQA_PATH = Path("../CrosswordQA/")
 
 DB_SCHEMA = """
-    PRAGMA journal_mode = OFF;
-    CREATE VIRTUAL TABLE clues USING fts5(
-        clue,
-        answer UNINDEXED,
-        cryptic UNINDEXED
-    );
+PRAGMA journal_mode = OFF;
+CREATE VIRTUAL TABLE clues USING fts5(
+    clue,
+    answer UNINDEXED,
+    cryptic UNINDEXED
+);
 """
 
 
@@ -63,26 +63,25 @@ def build_database() -> None:
                 )
 
 
-def get_db(in_context: bool = True):
-    connect = lambda: sqlite3.connect(DUMPLING_DB_PATH)
+def get_db(in_context: bool = True) -> sqlite3.Connection:
     if not in_context:
-        return connect()
+        return sqlite3.connect(DUMPLING_DB_PATH)
 
     db = getattr(g, "_database", None)
     if db is None:
-        db = g._database = connect()
+        db = g._database = sqlite3.connect(DUMPLING_DB_PATH)
     return db
 
 
 @app.teardown_appcontext
-def close_connection(exception):
+def close_connection(exception: Optional[Exception]) -> None:
     db = getattr(g, "_database", None)
     if db is not None:
         db.close()
 
 
 @app.route("/")
-def index():
+def index() -> str:
     return """
 <!doctype html>
 <head>
@@ -117,7 +116,7 @@ iframe { border: none; margin: 0; padding: 0; }
 
 
 @app.route("/q/<query>")
-def search(query: str):
+def search(query: str) -> str:
     cur = get_db().cursor()
     matches: DefaultDict[str, List[str]] = defaultdict(list)
     for clue, answer in cur.execute(
