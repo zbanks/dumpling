@@ -24,7 +24,7 @@ iframe { border: none; margin: 0; padding: 0; }
 
     var run = function() {
         console.log(q.value);
-        results.setAttribute("src", "/q/" + encodeURIComponent(q.value));    
+        results.setAttribute("src", "/html/" + encodeURIComponent(q.value));    
     }
     button.addEventListener("click", run);
     q.addEventListener("change", run);

@@ -5,10 +5,13 @@ import os
 import sqlite3
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import wraps
 from pathlib import Path
-from typing import IO, DefaultDict, Iterator, List, Optional, Tuple
+from typing import (IO, Any, Callable, DefaultDict, Dict, Iterator, List,
+                    Optional, Tuple, TypeVar, Union)
 
 from flask import Flask, Response, g, request, send_file
+from flask.json import jsonify
 
 DUMPLING_DB_PATH = Path(os.environ.get("DUMPLING_DB_PATH", "dumpling.db"))
 CROSSWORDQA_PATH = Path("../CrosswordQA/")
@@ -114,6 +117,27 @@ def search(query: str, limit: int, in_context: bool = True) -> List[Answer]:
     return result[:limit]
 
 
+T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
+FuncResponse = TypeVar("FuncResponse", bound=Callable[..., Response])
+
+
+def wrap_return(fn: Callable[[T], Response]) -> Callable[[F], FuncResponse]:
+    def _decorator(f: F) -> FuncResponse:
+        @wraps(f)
+        def _wrap(*args: Any, **kwargs: Any) -> Response:
+            result: T = f(*args, **kwargs)
+            return fn(result)
+
+        return _wrap  # type: ignore
+
+    return _decorator
+
+
+def textify(text: str) -> Response:
+    return Response(text, content_type="text/plain")
+
+
 @app.teardown_appcontext
 def close_connection(exception: Optional[Exception]) -> None:
     db = getattr(g, "_database", None)
@@ -131,8 +155,37 @@ def favicon() -> Response:
     return send_file("static/favicon.ico")
 
 
-@app.route("/q/<query>")
-def html(query: str) -> str:
+@app.route("/json/<query>")
+@wrap_return(jsonify)
+def json_search(query: str) -> Union[List[Answer], Dict[str, str]]:
+    limit = int(request.args.get("limit", 1000))
+
+    try:
+        results = search(query, limit)
+    except SearchSyntaxError as ex:
+        return {"error": str(ex)}
+    if not results:
+        return {"error": "no results :("}
+
+    return results
+
+
+@app.route("/text/<query>")
+@wrap_return(textify)
+def text_search(query: str) -> str:
+    limit = int(request.args.get("limit", 1000))
+
+    try:
+        results = search(query, limit)
+    except SearchSyntaxError as ex:
+        return str(ex)
+    if not results:
+        return "no results :("
+    return "".join(f"{a.answer}\n" for a in results)
+
+
+@app.route("/html/<query>")
+def html_search(query: str) -> str:
     limit = int(request.args.get("limit", 1000))
 
     try:
@@ -143,7 +196,7 @@ def html(query: str) -> str:
         return "no results :("
 
     rows = []
-    for a in search(query, limit):
+    for a in results:
         rows.append(
             f"""<tr>
             <td>{len(a.clues)}: {a.score:0.2f}</td>
