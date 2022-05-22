@@ -1,33 +1,335 @@
 <!doctype html>
-<head>
-<title>Dumpling!</title>
-<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
-<link rel="manifest" href="/static/site.webmanifest">
-<style>
-html, body, iframe { width: 100%; height: 100%; }
-iframe { border: none; margin: 0; padding: 0; }
-</style>
-</head>
-<body>
-    <h1>Dumpling!</h1>
-    <p>
-        <input type="text" id="q">
-        <button id="go">go</button>
-    </p>
-    <iframe id="results"></iframe>
-    <script type="text/javascript">
-    const q = document.querySelector("#q");
-    const button = document.querySelector("#go");
-    const results = document.querySelector("#results");
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>Dumpling</title>
+        <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+        <link rel="manifest" href="/static/site.webmanifest">
+        <style>
+            body {
+                font-family: system-ui;
+            }
+            textarea {
+                width: min(600px, 100%);
+                height: 300px;
+                font-family: Monospace;
+                font-size: 1.4rem;
+            }
+            button {
+                /* font-size: 1.4em; */
+            }
+            abbr {
+                text-decoration: none;
+                cursor: help;
+            }
+            #status {
+            }
+            #output {
+                font-family: Monospace;
+                font-size: 1.2rem;
+                white-space: pre-wrap;
 
-    var run = function() {
-        console.log(q.value);
-        results.setAttribute("src", "/html/" + encodeURIComponent(q.value));    
-    }
-    button.addEventListener("click", run);
-    q.addEventListener("change", run);
-    </script>
-</body>
+                margin-top: 10px;
+                margin-bottom: 20px;
+            }
+            .column-container {
+                display: flex;
+                flex-flow: row wrap;
+            }
+            .column {
+                width: max(30%, 300px);
+                margin-left: 15px;
+                margin-right: 15px;
+            }
+            .column:first-child {
+                margin-left: 5px;
+            }
+            .column:last-child {
+                margin-right: 5px;
+            }
+            .examples {
+                margin-top: 40px;
+            }
+            a {
+                color: #13C;
+            }
+            a.example {
+                font-family: Monospace;
+                word-wrap: break-word;
+                color: black;
+                text-decoration: none;
+            }
+            a.example:hover {
+                text-decoration: underline;
+            }
+            a.ext {
+                font-size: 0.7em;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                text-decoration: underline;
+                margin-left: 0.1em;
+                color: #13C;
+            }
+            a.ext:visited {
+                color: #205;
+            }
+            div.match {
+                display: flex;
+            }
+            div.result {
+                position: relative;
+                /* margin-left: 0.8em; */
+                width: 100%;
+                padding-top: 1px;
+                padding-bottom: 1px;
+                margin-top: 2px;
+                margin-bottom: 2px;
+            }
+            div.match div.score-bar{
+                position: absolute;
+                top: 0;
+                left: 0;
+                z-index: -1;
+                height: 1.2em;
+                background-color: #E2E2E2;
+            }
+            div.clue {
+                font-size: 0.8em;
+                font-family: system-ui;
+                -webkit-touch-callout: none;
+                -webkit-user-select: none;
+                -khtml-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+            }
+        </style>
+    </head>
+    <body>
+        <h1><a href="/">Dumpling</a></h1>
+        <div class="column-container">
+            <div class="column">
+                <h2>Input</h2>
+                <div>
+                    <input type="text" id="input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></input>
+                    <button id="query">Go</button>
+                </div>
+                <div style="margin-top: 1em;"></div>
+                <div>
+                    <label for="enable-filter">
+                        <abbr title="Post-process output; only include matches for the following regular expression">
+                            Filter Output
+                        </abbr>
+                    </label>
+                    <input type="checkbox" id="enable-filter"></input>
+                    <input type="text" id="filter"></input>
+                </div>
+                <div style="margin-top: 1em;"></div>
+                <div style="margin-top: 1em;"></div>
+                <div>
+                    <details>
+                        <summary>Send Feedback</summary>
+                        <textarea id="feedback"></textarea>
+                        <button id="send-feedback">Send Feedback</button>
+                        <p>
+                        This form will send @zbanks your current query, your browser name, and the above text.
+                        </p>
+                    </details>
+                </div>
+                <div class="examples">
+                    <h2>Examples</h2>
+                    <ul>
+                        <li><a class="example">hello world</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="column">
+                <h2>Output</h2>
+                <div id="status"></div>
+                <div id="output"></div>
+            </div>
+            <div class="column">
+                <p>Dumpling is a crossword clue search tool.</p>
+                <p>It's similar to <a href="https://www.wordplays.com/">Wordplays.com</a> or <a href="https://crossword-solver.io/">Crossword Solver</a>.</p>
+                <p>It uses a the <a href="https://huggingface.co/datasets/albertxu/CrosswordQA">CrosswordQA</a> dataset of 6.8 million clues prepared by Albert Xu.</p>
+<!-- end help -->
+            </div>
+        </div>
+        <script type="text/javascript">
+        </script>
+        <script type="text/javascript">
+            var outputDiv = document.querySelector("#output");
+            var statusDiv = document.querySelector("#status");
+            var input = document.querySelector("#input");
+            var enableFilter = document.querySelector("#enable-filter");
+            var debug = document.querySelector("#debug");
+            var filter = document.querySelector("#filter");
+            var feedback = document.querySelector("#feedback");
+
+            input.value = decodeURI(window.location.hash.substring(1));
+            window.matches = "";
+
+            function rebuildOutput() {
+                /*
+                if (sort.checked) {
+                    window.matches.sort(function (a, b) { return a.netScore - b.netScore; });
+                } else {
+                    window.matches.sort(function (a, b) { return a.originalOrder - b.originalOrder; });
+                }
+                */
+                var filter_regex = null;
+                if (!enableFilter.checked || !filter.value.trim()) {
+                    filter_regex = null;
+                } else if (/^[0-9]+$/.test(filter.value)) {
+                    filter_regex = new RegExp("^.{" + filter.value + "}$", 'i');
+                } else {
+                    filter_regex = new RegExp("^" + filter.value + "$", 'i');
+                }
+                outputDiv.innerHTML = "";
+                var n = 0;
+                for (var i = 0; i < window.matches.length; i++) {
+                    if (filter_regex !== null) {
+                        if (!filter_regex.test(window.matches[i].answer)) {
+                            continue;
+                        }
+                    }
+                    outputDiv.appendChild(window.matches[i].block);
+                    n++;
+                }
+                statusDiv.innerText = n + "/" + window.matches.length + " results";
+            }
+            function submit() {
+                let query = input.value;
+                outputDiv.innerHTML = "";
+                statusDiv.innerHTML = "";
+                window.location.hash = "#" + encodeURI(query);
+                window.matches = [];
+
+                if (!query.trim()) {
+                    return;
+                }
+
+                statusDiv.innerText = "Searching for: " + query;
+
+                var url = "/json/" + encodeURI(query);
+                var req = new XMLHttpRequest();
+                req.addEventListener("load", function() {
+                    var data = JSON.parse(req.responseText);
+                    if (data.error) {
+                        statusDiv.innerText = data.error;
+                        return;
+                    }
+                    for (var i = 0; i < data.results.length; i++) {
+                        var match = data.results[i];
+
+                        match.originalOrder = i;
+                        match.fractionScore = Math.max(0.02, Math.min(1.0, match.score / 100));
+
+                        match.block = document.createElement("div");
+                        match.block.match = match;
+                        match.block.className = "match";
+                        window.matches.push(match);
+
+                        let result = document.createElement("div");
+                        result.className = "result";
+                        result.innerText = match.answer;
+
+                        let scoreBar = document.createElement("div");
+                        scoreBar.className = "score-bar";
+                        scoreBar.style.width = (match.fractionScore * 100) + "%";
+                        result.appendChild(scoreBar);
+
+                        let clue = document.createElement("div");
+                        clue.className = "clue";
+                        clue.innerText = "(" + match.answer.length + ") " + match.clues[0];
+                        result.appendChild(clue);
+
+                        let copy = document.createElement("a");
+                        copy.innerText = "c";
+                        copy.className = "ext";
+                        copy.style.cursor = "copy";
+                        copy.title = "Copy to clipboard";
+                        copy.addEventListener("click", function() {
+                            navigator.clipboard.writeText(match.answer);
+                        });
+
+                        let google = document.createElement("a");
+                        google.innerText = "g";
+                        google.className = "ext";
+                        google.href = "https://google.com/search?q=define:" + encodeURI(match.answer);
+                        google.title = "Google define:" + match.answer;
+                        google.target = "_blank";
+
+                        let wiki = document.createElement("a");
+                        wiki.innerText = "w";
+                        wiki.className = "ext";
+                        wiki.href = "https://en.wikipedia.org/w/index.php?ns0=1&search=" + encodeURI(match.answer);
+                        wiki.title = "Wikipedia " + match.answer;
+                        wiki.target = "_blank";
+
+                        //match.block.appendChild(copy);
+                        //match.block.appendChild(google);
+                        //match.block.appendChild(wiki);
+                        match.block.appendChild(result);
+                    }
+                    rebuildOutput();
+                });
+                req.addEventListener("error", function() {
+                    statusDiv.innerText = "Unable to connect to Dumpling server";
+                });
+                req.open("GET", url);
+                req.send();
+                /*
+                ws.onmessage = function(ev) {
+                    var data = JSON.parse(ev.data);
+                    if (data.status) {
+                        statusDiv.innerText = data.status;
+                    } else if (data.log) {
+                        let block = document.createElement("div");
+                        block.innerText = data.log.message;
+                        logDiv.appendChild(block);
+                    } else if (data.match) {
+                    }
+                }
+                */
+            }
+            document.querySelector("#query").addEventListener("click", submit);
+            document.querySelector("#input").addEventListener("change", submit);
+            document.querySelectorAll("a.example").forEach(function(a) {
+                var query = a.innerText;
+                a.href = "#" + encodeURI(query);
+                a.addEventListener("click", function() {
+                    input.value = query;
+                    enableFilter.checked = false;
+                    submit();
+                });
+            });
+            enableFilter.addEventListener("input", rebuildOutput);
+            filter.addEventListener("input", function() {
+                enableFilter.checked = true;
+                rebuildOutput();
+            });
+            document.querySelector("#send-feedback").addEventListener("click", function() {
+                // Yes, this is just a plain Discord webhook URL, thinly vieled to thwart generic
+                // GitHub/web scrapers. Yes you can use this to send me arbitrary messages, but then
+                // I can just disable the webhook entirely.
+                let webhookUrl = "https://disco" + "rd.com/api/webho" + "oks/93489429" + "7843634177/sxl1mAAxEGYj3trquqoYpHQVchRirVu0tArGpd6eIJst" + "kUQ3Q-Q0fa3Csx-sAR6IJUd8";
+                let message = feedback.value + "\n```\n" + input.value + "\n```\nvia `" + window.navigator.userAgent + "`\n";
+                console.log(message);
+
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", webhookUrl);
+                xhr.setRequestHeader("Content-type", "application/json");
+                xhr.send(JSON.stringify({content: message}));
+            });
+            submit();
+        </script>
+    </body>
 </html>
+

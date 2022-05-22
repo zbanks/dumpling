@@ -157,7 +157,7 @@ def favicon() -> Response:
 
 @app.route("/json/<query>")
 @wrap_return(jsonify)
-def json_search(query: str) -> Union[List[Answer], Dict[str, str]]:
+def json_search(query: str) -> Dict[str, Union[List[Answer], str]]:
     limit = int(request.args.get("limit", 1000))
 
     try:
@@ -167,7 +167,7 @@ def json_search(query: str) -> Union[List[Answer], Dict[str, str]]:
     if not results:
         return {"error": "no results :("}
 
-    return results
+    return {"results": results}
 
 
 @app.route("/text/<query>")
