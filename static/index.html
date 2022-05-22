@@ -1,0 +1,33 @@
+<!doctype html>
+<head>
+<title>Dumpling!</title>
+<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
+<link rel="manifest" href="/static/site.webmanifest">
+<style>
+html, body, iframe { width: 100%; height: 100%; }
+iframe { border: none; margin: 0; padding: 0; }
+</style>
+</head>
+<body>
+    <h1>Dumpling!</h1>
+    <p>
+        <input type="text" id="q">
+        <button id="go">go</button>
+    </p>
+    <iframe id="results"></iframe>
+    <script type="text/javascript">
+    const q = document.querySelector("#q");
+    const button = document.querySelector("#go");
+    const results = document.querySelector("#results");
+
+    var run = function() {
+        console.log(q.value);
+        results.setAttribute("src", "/q/" + encodeURIComponent(q.value));    
+    }
+    button.addEventListener("click", run);
+    q.addEventListener("change", run);
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.9
+#!/usr/bin/env python3.7
 
 import csv
 import os
@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import IO, DefaultDict, Iterator, List, Optional, Tuple
 
-from flask import Flask, g, request
+from flask import Flask, Response, g, request, send_file
 
 DUMPLING_DB_PATH = Path(os.environ.get("DUMPLING_DB_PATH", "dumpling.db"))
 CROSSWORDQA_PATH = Path("../CrosswordQA/")
@@ -81,38 +81,13 @@ def close_connection(exception: Optional[Exception]) -> None:
 
 
 @app.route("/")
-def index() -> str:
-    return """
-<!doctype html>
-<head>
-<title>Dumpling!</title>
-<style>
-html, body, iframe { width: 100%; height: 100%; }
-iframe { border: none; margin: 0; padding: 0; }
-</style>
-</head>
-<body>
-    <h1>Dumpling!</h1>
-    <p>
-        <input type="text" id="q">
-        <button id="go">go</button>
-    </p>
-    <iframe id="results"></iframe>
-    <script type="text/javascript">
-    const q = document.querySelector("#q");
-    const button = document.querySelector("#go");
-    const results = document.querySelector("#results");
+def index() -> Response:
+    return send_file("static/index.html")
 
-    var run = function() {
-        console.log(q.value);
-        results.setAttribute("src", "/q/" + encodeURIComponent(q.value));    
-    }
-    button.addEventListener("click", run);
-    q.addEventListener("change", run);
-    </script>
-</body>
-</html>
-"""
+
+@app.route("/favicon.ico")
+def favicon() -> Response:
+    return send_file("static/favicon.ico")
 
 
 @app.route("/q/<query>")

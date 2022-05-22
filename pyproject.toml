@@ -6,7 +6,7 @@ authors = ["Zach Banks <zjbanks@gmail.com>"]
 license = "MIT License"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.7"
 Flask = "^2.1.2"
 gunicorn = "^20.1.0"
 

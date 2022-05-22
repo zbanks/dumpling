@@ -1,17 +1,14 @@
 # dumpling
 Crossword clue lookup tool
 
-## Setup
+## Running locally
 ```
-python3.7 -m virtualenv venv
-source venv/bin/activate.sh
-
-pip install -r requirements.txt -r requirements.dev
-# OR: pip install -r requirements.lock
+python3.7 -m pip install -U poetry
+make setup
 
 # Generate clue database
-rm -f dumpling.db; ./dumpling.py
+make db
 
 # Run debug server (bound to INET_ANY & with reloading)
-env FLASK_APP=dumpling.py flask run --host 0 --reload
+make serve
 ```
