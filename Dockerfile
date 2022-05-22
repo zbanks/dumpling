@@ -5,5 +5,6 @@ WORKDIR app
 COPY poetry.lock pyproject.toml /app/
 RUN poetry install --no-dev --no-root
 
-COPY dumpling.py static /app/
+COPY static /app/static
+COPY dumpling.py /app/
 ENTRYPOINT ["poetry", "run", "gunicorn", "dumpling:app"]

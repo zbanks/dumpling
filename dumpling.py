@@ -4,6 +4,7 @@ import csv
 import os
 import sqlite3
 from collections import defaultdict
+from dataclasses import dataclass
 from pathlib import Path
 from typing import IO, DefaultDict, Iterator, List, Optional, Tuple
 
@@ -73,6 +74,46 @@ def get_db(in_context: bool = True) -> sqlite3.Connection:
     return db
 
 
+@dataclass(order=True)
+class Answer:
+    score: float
+    answer: str
+    clues: List[str]
+
+
+class SearchSyntaxError(Exception):
+    def __str__(self) -> str:
+        return f'Search syntax error: "{self.args[0]}"'
+
+
+def search(query: str, limit: int, in_context: bool = True) -> List[Answer]:
+    cur = get_db(in_context=in_context).cursor()
+    try:
+        entries = cur.execute(
+            "SELECT clue, answer, -rank FROM clues WHERE clue MATCH ? ORDER BY rank LIMIT 50000",
+            (query,),
+        )
+    except sqlite3.OperationalError as ex:
+        if "syntax error" in ex.args[0]:
+            raise SearchSyntaxError(query)
+        raise
+
+    matches: DefaultDict[str, List[Tuple[str, float]]] = defaultdict(list)
+    for clue, answer, score in entries:
+        matches[answer].append((clue, score))
+
+    result: List[Answer] = []
+    for answer, clues_and_scores in matches.items():
+        scores = [s for c, s in clues_and_scores]
+        score = max(scores) * (len(scores) ** 0.5) * 0.95 + sum(scores) * 0.05
+        result.append(
+            Answer(score=score, answer=answer, clues=[c for c, s in clues_and_scores])
+        )
+
+    result.sort(reverse=True)
+    return result[:limit]
+
+
 @app.teardown_appcontext
 def close_connection(exception: Optional[Exception]) -> None:
     db = getattr(g, "_database", None)
@@ -91,23 +132,27 @@ def favicon() -> Response:
 
 
 @app.route("/q/<query>")
-def search(query: str) -> str:
-    cur = get_db().cursor()
-    matches: DefaultDict[str, List[str]] = defaultdict(list)
-    for clue, answer in cur.execute(
-        "SELECT clue, answer FROM clues WHERE clue MATCH ? LIMIT 10000", (query,)
-    ):
-        matches[answer].append(clue)
-
+def html(query: str) -> str:
     limit = int(request.args.get("limit", 1000))
-    output = ""
-    for answer, clues in sorted(matches.items(), key=lambda x: -len(x[1]))[:limit]:
-        output += f"<tr><td>{len(clues)}</td><td>{answer}</td><td>({len(answer)})</td><td>{clues[0]}</td></tr>\n"
-    if output:
-        output = f"<table>\n{output}\n</table>\n"
-    else:
-        output = "no results :(\n"
-    return output
+
+    try:
+        results = search(query, limit)
+    except SearchSyntaxError as ex:
+        return str(ex)
+    if not results:
+        return "no results :("
+
+    rows = []
+    for a in search(query, limit):
+        rows.append(
+            f"""<tr>
+            <td>{len(a.clues)}: {a.score:0.2f}</td>
+            <td>{a.answer}</td>
+            <td>({len(a.answer)})</td>
+            <td>{a.clues[0]}</td>
+        </tr>"""
+        )
+    return f"<table>{''.join(rows)}</table>"
 
 
 if __name__ == "__main__":
