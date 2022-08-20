@@ -172,7 +172,7 @@
             var filter = document.querySelector("#filter");
             var feedback = document.querySelector("#feedback");
 
-            input.value = decodeURI(window.location.hash.substring(1));
+            input.value = decodeURIComponent(window.location.hash.substring(1));
             window.matches = "";
 
             function rebuildOutput() {
@@ -201,7 +201,7 @@
                 let query = input.value;
                 outputDiv.innerHTML = "";
                 statusDiv.innerHTML = "";
-                window.location.hash = "#" + encodeURI(query);
+                window.location.hash = "#" + encodeURIComponent(query);
                 window.matches = [];
 
                 if (!query.trim()) {
@@ -210,7 +210,7 @@
 
                 statusDiv.innerText = "Searching for: " + query;
 
-                var url = "/json/" + encodeURI(query);
+                var url = "/json/" + encodeURIComponent(query);
                 var req = new XMLHttpRequest();
                 req.addEventListener("load", function() {
                     var data = JSON.parse(req.responseText);
@@ -238,9 +238,10 @@
                         scoreBar.style.width = (match.fractionScore * 100) + "%";
                         result.appendChild(scoreBar);
 
+                        let prefix = match.cryptic ? match.cryptic + ": " : "";
                         let clue = document.createElement("div");
                         clue.className = "clue";
-                        clue.innerText = "(" + match.answer.length + ") " + match.clues[0];
+                        clue.innerText = prefix + "(" + match.answer.length + ") " + match.clues[0];
                         result.appendChild(clue);
 
                         let copy = document.createElement("a");
@@ -255,14 +256,14 @@
                         let google = document.createElement("a");
                         google.innerText = "g";
                         google.className = "ext";
-                        google.href = "https://google.com/search?q=define:" + encodeURI(match.answer);
+                        google.href = "https://google.com/search?q=define:" + encodeURIComponent(match.answer);
                         google.title = "Google define:" + match.answer;
                         google.target = "_blank";
 
                         let wiki = document.createElement("a");
                         wiki.innerText = "w";
                         wiki.className = "ext";
-                        wiki.href = "https://en.wikipedia.org/w/index.php?ns0=1&search=" + encodeURI(match.answer);
+                        wiki.href = "https://en.wikipedia.org/w/index.php?ns0=1&search=" + encodeURIComponent(match.answer);
                         wiki.title = "Wikipedia " + match.answer;
                         wiki.target = "_blank";
 
@@ -283,7 +284,7 @@
             document.querySelector("#input").addEventListener("change", submit);
             document.querySelectorAll("a.example").forEach(function(a) {
                 var query = a.innerText;
-                a.href = "#" + encodeURI(query);
+                a.href = "#" + encodeURIComponent(query);
                 a.addEventListener("click", function() {
                     input.value = query;
                     enableFilter.checked = false;
