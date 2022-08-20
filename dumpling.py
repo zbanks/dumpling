@@ -42,7 +42,6 @@ def build_database() -> None:
             if "\n" in clue:
                 clue, _, final_line = clue.rpartition("\n")
                 for line in clue.split("\n"):
-                    wordplay_letters = set("".join(wordplay_terms))
                     line = line.strip()
                     subclue, _, subanswer = line.rpartition(" ")
                     assert norm(subanswer) == subanswer and subanswer, (
@@ -105,7 +104,7 @@ class SearchSyntaxError(Exception):
         return f'Search syntax error: "{self.args[0]}"'
 
 
-def search_raw(query: str, limit: int, in_context: bool = True) -> List[Answer]:
+def search(query: str, limit: int, in_context: bool = True) -> List[Answer]:
     cur = get_db(in_context=in_context).cursor()
     try:
         entries = cur.execute(
@@ -133,54 +132,6 @@ def search_raw(query: str, limit: int, in_context: bool = True) -> List[Answer]:
     return result[:limit]
 
 
-def search_cryptic(query: str, limit: int, in_context: bool = True) -> List[Answer]:
-    query_terms = re.split(r"\W+", query, maxsplit=50)
-
-    results: Dict[str, Answer] = {}
-    for i in range(len(query_terms)):
-        a, b = query_terms[:i], query_terms[i:]
-        subresults: Dict[str, Answer] = {}
-        for subquery_terms, wordplay_terms in ((a, b), (b, a)):
-            subquery = " ".join(subquery_terms)
-            if not subquery:
-                continue
-            wordplay_str = "".join(wordplay_terms).upper()
-            wordplay_letters = set(wordplay_str)
-            for answer in search_raw(subquery, limit=limit, in_context=in_context):
-                existing_answer = subresults.get(answer.answer)
-                if existing_answer is not None:
-                    # Double definition
-                    existing_answer.combine(answer)
-                    existing_answer.cryptic = "ddef"
-                    continue
-
-                if answer.answer in wordplay_str:
-                    answer.cryptic = "sub"
-                elif set(answer.answer).issubset(wordplay_letters):
-                    answer.score *= 0.7
-                    answer.cryptic = "ang"
-                else:
-                    answer.score *= 0.2
-
-                subresults[answer.answer] = answer
-
-        for answer in subresults.values():
-            existing_answer = results.get(answer.answer)
-            if existing_answer is not None:
-                existing_answer.combine(answer)
-            else:
-                results[answer.answer] = answer
-
-    return sorted(results.values(), reverse=True)[:limit]
-
-
-def search(query: str, limit: int, in_context: bool = True) -> List[Answer]:
-    if query.startswith("?"):
-        return search_cryptic(query[1:], limit=limit, in_context=in_context)
-    # return search_raw(query, limit=limit, in_context=in_context)
-    return search_cryptic(query, limit=limit, in_context=in_context)
-
-
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
 FuncResponse = TypeVar("FuncResponse", bound=Callable[..., Response])
@@ -203,20 +154,25 @@ def textify(text: str) -> Response:
 
 
 @app.teardown_appcontext
-def close_connection(exception: Optional[Exception]) -> None:
+def close_connection(exception: Optional[BaseException]) -> None:
     db = getattr(g, "_database", None)
     if db is not None:
         db.close()
 
 
 @app.route("/")
-def index() -> Response:
+def index() -> Any:
     return send_file("static/index.html")
 
 
 @app.route("/favicon.ico")
-def favicon() -> Response:
+def dumpling_db() -> Any:
     return send_file("static/favicon.ico")
+
+
+@app.route("/dumpling.db")
+def favicon() -> Any:
+    return send_file(DUMPLING_DB_PATH)
 
 
 @app.route("/json/<query>")
