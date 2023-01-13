@@ -8,8 +8,19 @@ from collections import defaultdict
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import (IO, Any, Callable, DefaultDict, Dict, Iterator, List,
-                    Optional, Tuple, TypeVar, Union)
+from typing import (
+    IO,
+    Any,
+    Callable,
+    DefaultDict,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from flask import Flask, Response, g, request, send_file
 from flask.json import jsonify
@@ -228,5 +239,15 @@ def html_search(query: str) -> str:
     return f"<table>{''.join(rows)}</table>"
 
 
+def dump_answers() -> None:
+    cur = get_db(in_context=False).cursor()
+    with open("dumpling_db.txt", "w") as f:
+        for answer, count in cur.execute(
+            "SELECT answer, COUNT(answer) AS count FROM clues GROUP BY answer ORDER BY count DESC"
+        ):
+            f.write(f"{count}\t{answer}\n")
+
+
 if __name__ == "__main__":
     build_database()
+    # dump_answers()
