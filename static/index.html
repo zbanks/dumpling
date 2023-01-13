@@ -131,6 +131,15 @@
                     <input type="text" id="filter" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></input>
                 </div>
                 <div style="margin-top: 1em;"></div>
+                <div>
+                    <label for="cryptic">
+                        <abbr title="Look for answers matching any left or right part of the clue, with some heuristics for double definitions, substrings, and anagrams.">
+                            Cryptic Mode (advanced)
+                        </abbr>
+                    </label>
+                    <input type="checkbox" id="cryptic"></input>
+                </div>
+                <div style="margin-top: 1em;"></div>
                 <div style="margin-top: 1em;"></div>
                 <div>
                     <details>
@@ -167,12 +176,19 @@
             var outputDiv = document.querySelector("#output");
             var statusDiv = document.querySelector("#status");
             var input = document.querySelector("#input");
+            var cryptic = document.querySelector("#cryptic");
             var enableFilter = document.querySelector("#enable-filter");
             var debug = document.querySelector("#debug");
             var filter = document.querySelector("#filter");
             var feedback = document.querySelector("#feedback");
 
-            input.value = decodeURIComponent(window.location.hash.substring(1));
+
+            var hash = window.location.hash.substring(1);
+            if (hash.length > 1 && hash[0] == "?") {
+                hash = hash.substring(1);
+                cryptic.checked = true;
+            }
+            input.value = decodeURIComponent(hash);
             window.matches = "";
 
             function rebuildOutput() {
@@ -201,7 +217,7 @@
                 let query = input.value;
                 outputDiv.innerHTML = "";
                 statusDiv.innerHTML = "";
-                window.location.hash = "#" + encodeURIComponent(query);
+                window.location.hash = "#" + (cryptic.checked ? "?" : "") + encodeURIComponent(query);
                 window.matches = [];
 
                 if (!query.trim()) {
@@ -211,6 +227,9 @@
                 statusDiv.innerText = "Searching for: " + query;
 
                 var url = "/json/" + encodeURIComponent(query);
+                if (cryptic.checked) {
+                    url += "?cryptic";
+                }
                 var req = new XMLHttpRequest();
                 req.addEventListener("load", function() {
                     var data = JSON.parse(req.responseText);

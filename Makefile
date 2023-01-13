@@ -1,4 +1,5 @@
-POETRY = python3.7 -m poetry 
+#POETRY = python3.7 -m poetry
+POETRY = poetry
 DB = dumpling.db
 
 .PHONY: setup db lint serve

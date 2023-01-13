@@ -53,7 +53,6 @@ def build_database() -> None:
             if "\n" in clue:
                 clue, _, final_line = clue.rpartition("\n")
                 for line in clue.split("\n"):
-                    wordplay_letters = set("".join(wordplay_terms))
                     line = line.strip()
                     subclue, _, subanswer = line.rpartition(" ")
                     assert norm(subanswer) == subanswer and subanswer, (
@@ -165,12 +164,16 @@ def search_cryptic(query: str, limit: int, in_context: bool = True) -> List[Answ
                     existing_answer.cryptic = "ddef"
                     continue
 
-                if answer.answer in wordplay_str:
+                answer_str = answer.answer.upper()
+                if answer_str in wordplay_str:
+                    # Substring (crossing word boundaries)
                     answer.cryptic = "sub"
-                elif set(answer.answer).issubset(wordplay_letters):
+                elif set(answer_str).issubset(wordplay_letters):
+                    # "Anagram" or ~container/construction; very weak signal
                     answer.score *= 0.7
                     answer.cryptic = "ang"
                 else:
+                    # No wordplay found, but include it anyways
                     answer.score *= 0.2
 
                 subresults[answer.answer] = answer
@@ -185,11 +188,13 @@ def search_cryptic(query: str, limit: int, in_context: bool = True) -> List[Answ
     return sorted(results.values(), reverse=True)[:limit]
 
 
-def search(query: str, limit: int, in_context: bool = True) -> List[Answer]:
-    if query.startswith("?"):
-        return search_cryptic(query[1:], limit=limit, in_context=in_context)
-    # return search_raw(query, limit=limit, in_context=in_context)
-    return search_cryptic(query, limit=limit, in_context=in_context)
+def search(
+    query: str, limit: int, cryptic: bool = False, in_context: bool = True
+) -> List[Answer]:
+    if cryptic:
+        return search_cryptic(query, limit=limit, in_context=in_context)
+    else:
+        return search_raw(query, limit=limit, in_context=in_context)
 
 
 T = TypeVar("T")
@@ -214,29 +219,35 @@ def textify(text: str) -> Response:
 
 
 @app.teardown_appcontext
-def close_connection(exception: Optional[Exception]) -> None:
+def close_connection(exception: Optional[BaseException]) -> None:
     db = getattr(g, "_database", None)
     if db is not None:
         db.close()
 
 
 @app.route("/")
-def index() -> Response:
+def index() -> Any:
     return send_file("static/index.html")
 
 
 @app.route("/favicon.ico")
-def favicon() -> Response:
+def dumpling_db() -> Any:
     return send_file("static/favicon.ico")
+
+
+@app.route("/dumpling.db")
+def favicon() -> Any:
+    return send_file(DUMPLING_DB_PATH)
 
 
 @app.route("/json/<query>")
 @wrap_return(jsonify)
 def json_search(query: str) -> Dict[str, Union[List[Answer], str]]:
     limit = int(request.args.get("limit", 1000))
+    cryptic = "cryptic" in request.args
 
     try:
-        results = search(query, limit)
+        results = search(query, limit=limit, cryptic=cryptic)
     except SearchSyntaxError as ex:
         return {"error": str(ex)}
     if not results:
@@ -249,9 +260,10 @@ def json_search(query: str) -> Dict[str, Union[List[Answer], str]]:
 @wrap_return(textify)
 def text_search(query: str) -> str:
     limit = int(request.args.get("limit", 1000))
+    cryptic = "cryptic" in request.args
 
     try:
-        results = search(query, limit)
+        results = search(query, limit=limit, cryptic=cryptic)
     except SearchSyntaxError as ex:
         return str(ex)
     if not results:
@@ -262,9 +274,10 @@ def text_search(query: str) -> str:
 @app.route("/html/<query>")
 def html_search(query: str) -> str:
     limit = int(request.args.get("limit", 1000))
+    cryptic = "cryptic" in request.args
 
     try:
-        results = search(query, limit)
+        results = search(query, limit=limit, cryptic=cryptic)
     except SearchSyntaxError as ex:
         return str(ex)
     if not results:
